@@ -200,4 +200,59 @@ class ProductController extends Controller
     //     $produkTerbaru = Product::latest()->take(8)->get();
     //     return view('User.LandingPage', compact('produkTerbaru'));
     // }
+
+// BELI LANGSUNG CONTROLLER
+    public function beliLangsung(Request $request, \App\Models\Product $product)
+    {
+        $request->validate([
+            'ukuran' => 'required',
+            'jumlah' => 'required|integer|min:1',
+        ]);
+        // Simpan data ke session sementara
+        session([
+            'beli_langsung' => [
+                'product_id' => $product->id,
+                'ukuran' => $request->ukuran,
+                'jumlah' => $request->jumlah,
+            ]
+        ]);
+        return redirect()->route('checkout.beliLangsung');
+    }
+
+    public function checkoutBeliLangsung()
+    {
+        $data = session('beli_langsung');
+        if (!$data) {
+            return redirect()->route('produk.user')->with('error', 'Tidak ada produk yang dipilih.');
+        }
+        $product = \App\Models\Product::with('sizes')->findOrFail($data['product_id']);
+        $selectedSize = $product->sizes->where('ukuran', $data['ukuran'])->first();
+        return view('Produk.CheckoutLangsung', [
+            'product' => $product,
+            'size' => $selectedSize,
+            'jumlah' => $data['jumlah'],
+        ]);
+    }
+
+    public function checkoutLangsung(Request $request, \App\Models\Product $product)
+    {
+        $request->validate([
+            'ukuran' => 'required',
+            'jumlah' => 'required|integer|min:1',
+        ]);
+
+        // Buat data item seperti dari keranjang
+        $item = (object)[
+            'product' => $product,
+            'ukuran' => $request->ukuran,
+            'quantity' => $request->jumlah,
+            'harga' => $product->sizes()->where('ukuran', $request->ukuran)->first()->harga ?? $product->harga,
+        ];
+
+        $items = [$item];
+        $total = $item->harga * $item->quantity;
+
+        // Kirim ke view transaksi
+        return view('Produk.Transaksi', compact('items', 'total'));
+    }
 }

@@ -246,6 +246,11 @@ public function callbackSimulasi(Request $request)
         return response()->json(['error' => 'Terjadi kesalahan saat memproses pesanan'], 500);
     }
 }
-
-
+public function bayarLangsung(Request $request)
+{
+    // Proses pembayaran langsung di sini
+    // Validasi, ambil data produk, dll.
+    // Redirect ke halaman pembayaran atau tampilkan notifikasi sukses
+    return back()->with('success', 'Pembayaran berhasil diproses (dummy).');
+}
 }
