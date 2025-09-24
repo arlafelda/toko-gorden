@@ -125,3 +125,9 @@ Route::middleware(['auth:admin'])->group(function () {
     Route::post('/admin/chat/send', [AdminChatController::class, 'sendMessage']);
 });
 
+// BELI SEKARANG
+Route::post('/produk/{product}/beli-langsung', [\App\Http\Controllers\Produk\ProductController::class, 'beliLangsung'])->name('produk.beliLangsung');
+Route::get('/checkout/beli-langsung', [\App\Http\Controllers\Produk\ProductController::class, 'checkoutBeliLangsung'])->name('checkout.beliLangsung');
+Route::post('/bayar-langsung', [\App\Http\Controllers\Produk\MidtransController::class, 'bayarLangsung'])->name('midtrans.bayarLangsung');
+Route::post('/checkout/langsung/{product}', [\App\Http\Controllers\Produk\ProductController::class, 'checkoutLangsung'])->name('produk.checkoutLangsung');
+

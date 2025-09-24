@@ -78,7 +78,7 @@
                     </button>
                     <button onclick="openPopup()"
                         class="flex-1 bg-gray-800 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-900">
-                        ORDER NOW
+                        CHECK OUT
                     </button>
                 </div>
             </div>
@@ -150,10 +150,14 @@
                 </div>
 
                 <!-- Tombol Tambah -->
-                <div class="p-4 border-t">
+                <div class="p-4 border-t flex gap-2">
                     <button type="button" onclick="submitFormKeranjang()"
-                        class="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700">
+                        class="w-1/2 bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700">
                         + Keranjang
+                    </button>
+                    <button type="button" onclick="submitFormCheckout()"
+                        class="w-1/2 bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700">
+                        Beli Sekarang
                     </button>
                 </div>
             </form>
@@ -265,6 +269,22 @@
             document.getElementById('inputJumlah').value = jumlahInput.value;
 
             document.querySelector('form').submit();
+        }
+        function submitFormCheckout() {
+            if (!selectedUkuran) {
+                alert('Silakan pilih ukuran terlebih dahulu.');
+                return;
+            }
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ route("produk.checkoutLangsung", $product->id) }}';
+            form.innerHTML = `
+                @csrf
+                <input type="hidden" name="ukuran" value="${selectedUkuran}">
+                <input type="hidden" name="jumlah" value="${jumlahInput.value}">
+            `;
+            document.body.appendChild(form);
+            form.submit();
         }
         const stars = document.querySelectorAll('.star');
         const ratingInput = document.getElementById('ratingInput');
