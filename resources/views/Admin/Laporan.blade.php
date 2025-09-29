@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,10 +9,10 @@
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body class="min-h-screen bg-white font-sans">
-  <!-- Sidebar -->
-  <aside class="fixed top-0 left-0 h-screen w-80 bg-white p-4 border-r border-gray-200 z-10">
+
+    <!-- Sidebar -->
+    <aside class="fixed top-0 left-0 h-screen w-80 bg-white p-4 border-r border-gray-200 z-10">
     <h1 class="text-xl font-semibold text-[#111418] mb-6">Admin Panel</h1>
     <nav class="flex flex-col gap-2">
       <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4]">
@@ -43,105 +42,57 @@
     </nav>
   </aside>
 
-  <!-- Main Content -->
-  <main class="ml-80 px-10 py-6">
-    <!-- Judul Laporan -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900">Laporan Admin</h1>
-      <p class="text-sm text-gray-500">Analisis kinerja toko Anda secara harian.</p>
-    </div>
+    <!-- Konten utama -->
+      <main class="ml-80 px-10 py-6">
+        <h1 class="text-2xl font-bold mb-6">Laporan Bulanan</h1>
 
-    <!-- Statistik -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="border rounded-xl p-6">
-        <p class="text-base font-medium text-red-900">Jumlah Pelanggan</p>
-        <p class="text-3xl font-bold text-red-900 truncate">{{ $jumlahPelanggan }}</p>
-      </div>
+        <!-- Filter Bulan -->
+        <form method="GET" class="mb-6 flex gap-3 items-center">
+            <input type="month" name="bulan" value="{{ $bulan }}"
+                   class="border rounded-lg px-3 py-2">
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg">Filter</button>
+        </form>
 
-      <div class="border rounded-xl p-6">
-        <p class="text-base font-medium text-green-900">Total Pendapatan</p>
-        <p class="text-3xl font-bold text-green-900 truncate">Rp {{ number_format($totalPendapatan, 0, ',', '.') }}</p>
-      </div>
-    </div>
+        <!-- Tabel Laporan -->
+        <div class="overflow-x-auto bg-white rounded-lg shadow">
+            <table class="min-w-full text-sm text-left">
+                <thead class="bg-gray-100 text-gray-700">
+                    <tr>
+                        <th class="px-4 py-2">Tanggal</th>
+                        <th class="px-4 py-2">Pelanggan</th>
+                        <th class="px-4 py-2">Produk</th>
+                        <th class="px-4 py-2">Jumlah</th>
+                        <th class="px-4 py-2">Harga</th>
+                        <th class="px-4 py-2">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($orders as $order)
+                        @foreach($order->orderItems as $item)
+                            <tr class="border-b">
+                                <td class="px-4 py-2">{{ $order->order_date }}</td>
+                                <td class="px-4 py-2">{{ $order->user->name ?? 'Guest' }}</td>
+                                <td class="px-4 py-2">{{ $item->product_name }}</td>
+                                <td class="px-4 py-2">{{ $item->quantity }}</td>
+                                <td class="px-4 py-2">Rp {{ number_format($item->price, 0, ',', '.') }}</td>
+                                <td class="px-4 py-2">Rp {{ number_format($item->quantity * $item->price, 0, ',', '.') }}</td>
+                            </tr>
+                        @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-gray-500">Tidak ada data laporan untuk bulan ini.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
 
-
-    <!-- Grafik Trafik Harian -->
-    <div class="mt-10">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold text-gray-900">Trafik Pendapatan Harian</h2>
-        <input type="date" id="dateFilter" class="border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div class="bg-white p-4 border rounded-xl w-full overflow-x-auto">
-        <canvas id="salesChart" height="100"></canvas>
-      </div>
-    </div>
-  </main>
-
-  <!-- Script -->
-  <script>
-    const ctx = document.getElementById('salesChart').getContext('2d');
-
-    const chartData = {
-      labels: [],
-      datasets: [{
-        label: 'Pendapatan Harian',
-        data: [],
-        fill: true,
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-        tension: 0.4
-      }]
-    };
-
-    const salesChart = new Chart(ctx, {
-      type: 'line',
-      data: chartData,
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function(value) {
-                return 'Rp ' + value.toLocaleString('id-ID');
-              }
-            }
-          }
-        }
-      }
-    });
-
-    function updateChartWithDate(dateStr) {
-      fetch(`/admin/laporan/pendapatan-harian?tanggal=${dateStr}`)
-        .then(response => response.json())
-        .then(data => {
-          chartData.labels = data.labels;
-          chartData.datasets[0].data = data.data;
-          salesChart.update();
-        });
-    }
-
-    const dateInput = document.getElementById('dateFilter');
-
-    // Set default ke hari ini
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
-    dateInput.value = todayStr;
-
-    // Event saat ganti tanggal
-    dateInput.addEventListener('change', function() {
-      if (!this.value) {
-        this.value = todayStr; // atur ke tanggal hari ini
-      }
-      updateChartWithDate(this.value);
-    });
-
-    // Saat halaman pertama kali dibuka
-    updateChartWithDate(todayStr);
-  </script>
+        <!-- Total -->
+        <div class="mt-6 text-right">
+            <p class="text-lg font-bold">Total Pendapatan:
+                <span class="text-green-600">Rp {{ number_format($totalPendapatan, 0, ',', '.') }}</span>
+            </p>
+        </div>
+    </main>
 </body>
-
 </html>
