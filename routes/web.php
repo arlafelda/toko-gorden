@@ -10,12 +10,13 @@ use App\Http\Controllers\Produk\MidtransController;
 use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminPelangganController;
-use App\Http\Controllers\Admin\AdminLaporanController;
 use App\Http\Controllers\Produk\ReviewController;
 use App\Http\Controllers\User\UserOrderController;
 use Illuminate\Support\Facades\Broadcast;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\AdminChatController;
+use App\Http\Controllers\Admin\AdminLaporanController;
+use App\Http\Controllers\Admin\AdminTrafikController;
 
 
 Route::get('/tentang_kami', function () {
@@ -104,10 +105,14 @@ Route::middleware(['auth:admin'])->prefix('admin')->group(function () {
 
 Route::get('/admin/pesananAdmin', [AdminOrderController::class, 'index'])->middleware('auth:admin')->name('pesananAdmin');
 
+Route::prefix('admin')->middleware('auth:admin')->group(function() {
+    Route::get('admin/trafik', [AdminTrafikController::class, 'index'])->name('admin.trafik.index');
+    Route::get('admin/trafik/data', [AdminTrafikController::class, 'data'])->name('admin.trafik.data');
+});
 
-Route::prefix('admin')->middleware(['auth:admin'])->group(function () {
-    Route::get('/laporan', [AdminLaporanController::class, 'index'])->name('admin.laporan');
-    Route::get('/laporan/pendapatan-harian', [AdminLaporanController::class, 'pendapatanHarian'])->name('admin.laporan.pendapatanHarian');
+Route::prefix('admin')->middleware('auth:admin')->group(function() {
+    Route::get('/admin/laporan', [AdminOrderController::class, 'index'])->name('admin.laporan.index');
+    Route::get('/admin/laporan/generate', [AdminLaporanController::class, 'generate'])->name('admin.laporan.generate');
 });
 
 Route::middleware(['auth:admin'])->group(function () {
