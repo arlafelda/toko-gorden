@@ -44,7 +44,7 @@
 
     <!-- Konten utama -->
       <main class="ml-80 px-10 py-6">
-        <h1 class="text-2xl font-bold mb-6">Laporan Bulanan</h1>
+        <h1 class="text-2xl font-bold mb-6">Laporan Bulanan Gorden</h1>
 
         <!-- Filter Bulan -->
         <form method="GET" class="mb-6 flex gap-3 items-center">
@@ -59,7 +59,7 @@
                 <thead class="bg-gray-100 text-gray-700">
                     <tr>
                         <th class="px-4 py-2">Tanggal</th>
-                        <th class="px-4 py-2">Pelanggan</th>
+                        <th class="px-4 py-2">User</th>
                         <th class="px-4 py-2">Produk</th>
                         <th class="px-4 py-2">Jumlah</th>
                         <th class="px-4 py-2">Harga</th>

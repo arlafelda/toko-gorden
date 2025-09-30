@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Broadcast;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\AdminChatController;
 use App\Http\Controllers\Admin\AdminLaporanController;
-use App\Http\Controllers\Admin\AdminTrafikController;
+// use App\Http\Controllers\Admin\AdminTrafikController;
 
 
 Route::get('/tentang_kami', function () {
@@ -105,10 +105,10 @@ Route::middleware(['auth:admin'])->prefix('admin')->group(function () {
 
 Route::get('/admin/pesananAdmin', [AdminOrderController::class, 'index'])->middleware('auth:admin')->name('pesananAdmin');
 
-Route::prefix('admin')->middleware('auth:admin')->group(function() {
-    Route::get('admin/trafik', [AdminTrafikController::class, 'index'])->name('admin.trafik.index');
-    Route::get('admin/trafik/data', [AdminTrafikController::class, 'data'])->name('admin.trafik.data');
-});
+// Route::prefix('admin')->middleware('auth:admin')->group(function() {
+//     Route::get('admin/trafik', [AdminTrafikController::class, 'index'])->name('admin.trafik.index');
+//     Route::get('admin/trafik/data', [AdminTrafikController::class, 'data'])->name('admin.trafik.data');
+// });
 
 Route::prefix('admin')->middleware('auth:admin')->group(function() {
     Route::get('/admin/laporan', [AdminOrderController::class, 'index'])->name('admin.laporan.index');
