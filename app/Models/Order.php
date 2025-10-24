@@ -15,6 +15,7 @@ class Order extends Model
         'total',
         'status',
         'payment_type',
+        'invoice_number',
     ];
 
     protected $casts = [
@@ -25,7 +26,7 @@ class Order extends Model
     /**
      * Relasi ke User (yang melakukan pemesanan)
      */
-    public function orderItems()
+    public function items()
     {
         return $this->hasMany(OrderItem::class);
     }

@@ -1,16 +1,8 @@
-{{-- === CHAT SUPPORT === --}}
+{{-- === CHAT SUPPORT STREAM === --}}
 @auth
 @php
-    \Carbon\Carbon::setLocale('id');
-    $receiverId = 5; // ID admin
     $userId = auth()->id();
-
-    $messages = \App\Models\Message::where(function ($query) use ($userId, $receiverId) {
-        $query->where('sender_id', $userId)->where('receiver_id', $receiverId)
-              ->orWhere(function ($q) use ($userId, $receiverId) {
-                  $q->where('sender_id', $receiverId)->where('receiver_id', $userId);
-              });
-    })->orderBy('created_at')->get();
+    $adminId = 5; // ID admin tetap
 @endphp
 
 <!-- Tombol Chat -->
@@ -22,9 +14,6 @@
     </svg>
 </button>
 
-<!-- Data Chat -->
-<div id="chatData" data-user-id="{{ $userId }}" data-receiver-id="{{ $receiverId }}"></div>
-
 <!-- Popup Chat -->
 <div id="chatPopup"
     class="fixed bottom-24 right-6 bg-white w-80 rounded-xl shadow-lg border border-gray-200 hidden z-50 flex flex-col max-h-[28rem]">
@@ -32,78 +21,76 @@
         <h3 class="font-semibold text-gray-700">Chat Toko Gorden</h3>
         <button onclick="toggleChat()" class="text-gray-500 hover:text-red-500 text-xl leading-none">&times;</button>
     </div>
-    <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-2 text-sm text-gray-700">
-        @foreach ($messages as $message)
-            <div class="{{ $message->sender_id == $userId ? 'bg-blue-100 self-end ml-auto' : 'bg-gray-100' }} rounded-lg p-2 w-max">
-                {{ $message->message }}
-            </div>
-        @endforeach
-    </div>
-    <form onsubmit="sendMessage(event)" class="border-t px-4 py-2 flex gap-2">
-        <input type="text" id="chatInput" placeholder="Tulis pesan..." class="flex-1 border rounded px-3 py-1 text-sm focus:outline-none" required>
-        <button type="submit" class="text-blue-600 hover:text-blue-800">
+    <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-2 text-sm text-gray-700"></div>
+    <div class="border-t px-4 py-2 flex gap-2">
+        <input type="text" id="messageInput" placeholder="Tulis pesan..." 
+               class="flex-1 border rounded px-3 py-1 text-sm focus:outline-none">
+        <button id="sendBtn" class="text-blue-600 hover:text-blue-800">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
             </svg>
         </button>
-    </form>
+    </div>
 </div>
 
-<!-- Script Chat -->
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="{{ asset('js/app.js') }}"></script>
-
+<!-- Script Chat Stream -->
+<script src="https://cdn.jsdelivr.net/npm/stream-chat@latest/dist/browser/index.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", () => {
-        const chatData = document.getElementById('chatData');
-        const userId = parseInt(chatData.dataset.userId);
-        const receiverId = parseInt(chatData.dataset.receiverId);
-        const chatBox = document.getElementById('chatMessages');
-
-        window.toggleChat = function () {
-            const popup = document.getElementById('chatPopup');
-            popup.classList.toggle('hidden');
-            if (!popup.classList.contains('hidden')) {
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
+document.addEventListener('DOMContentLoaded', async () => {
+    const userId = "{{ $userId }}";
+    const adminId = "{{ $adminId }}";
+    
+    window.toggleChat = function() {
+        const popup = document.getElementById('chatPopup');
+        popup.classList.toggle('hidden');
+        if (!popup.classList.contains('hidden')) {
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
         }
+    }
 
-        window.sendMessage = function (event) {
-            event.preventDefault();
-            const input = document.getElementById('chatInput');
-            const msg = input.value.trim();
-            if (!msg) return;
+    // Ambil token dari server
+    const tokenRes = await fetch(`/api/stream/token?user_id=${userId}&user_type=user`);
+    const { token } = await tokenRes.json();
 
-            const myMsgEl = document.createElement('div');
-            myMsgEl.className = 'bg-blue-100 rounded-lg p-2 w-max self-end ml-auto';
-            myMsgEl.textContent = msg;
-            chatBox.appendChild(myMsgEl);
-            chatBox.scrollTop = chatBox.scrollHeight;
+    // Inisialisasi Stream Chat
+    const client = StreamChat.getInstance("{{ config('services.stream.key') }}");
+    await client.connectUser({ id: userId }, token);
 
-            axios.post('/chat/send', {
-                receiver_id: receiverId,
-                message: msg
-            }).then(() => {
-                input.value = '';
-            });
-        }
+    // Channel unik user-admin
+    const channel = client.channel('messaging', `chat_${userId}_${adminId}`);
+    await channel.watch();
 
-        // === REALTIME CHAT DENGAN PUSHER ECHO ===
-        if (window.Echo) {
-            window.Echo.private(`chat.${userId}`)
-                .listen('MessageSent', (e) => {
-                    // Hanya tampilkan jika pengirim adalah admin
-                    if (parseInt(e.message.sender_id) !== receiverId) return;
+    const messageList = document.getElementById('messages');
+    const input = document.getElementById('messageInput');
 
-                    const msgEl = document.createElement('div');
-                    msgEl.className = 'bg-gray-100 rounded-lg p-2 w-max';
-                    msgEl.textContent = e.message.message;
-                    chatBox.appendChild(msgEl);
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                });
-        } else {
-            console.error('Laravel Echo tidak dimuat dengan benar');
-        }
+    // Render pesan lama
+    channel.state.messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = msg.user.id == userId ? 'bg-blue-100 rounded-lg p-2 w-max self-end ml-auto' : 'bg-gray-100 rounded-lg p-2 w-max';
+        div.textContent = msg.user.id + ": " + msg.text;
+        messageList.appendChild(div);
     });
+
+    // Event: pesan baru masuk
+    channel.on('message.new', event => {
+        const div = document.createElement('div');
+        div.className = event.message.user.id == userId ? 'bg-blue-100 rounded-lg p-2 w-max self-end ml-auto' : 'bg-gray-100 rounded-lg p-2 w-max';
+        div.textContent = event.message.user.id + ": " + event.message.text;
+        messageList.appendChild(div);
+        messageList.scrollTop = messageList.scrollHeight;
+    });
+
+    // Kirim pesan
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+        const text = input.value.trim();
+        if (!text) return;
+        await channel.sendMessage({ text });
+        input.value = '';
+    });
+
+    input.addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') document.getElementById('sendBtn').click();
+    });
+});
 </script>
 @endauth
