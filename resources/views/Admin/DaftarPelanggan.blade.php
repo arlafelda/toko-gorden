@@ -41,6 +41,11 @@
                 <span class="material-icons">chat</span>
                 <span class="text-sm font-medium">Obrolan</span>
             </a>
+            <a href="{{ route('admin.trafik') }}" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4]">
+                <span class="material-icons">analytics</span>
+                <span class="text-sm font-medium">Trafik</span>
+            </a>
+
         </nav>
     </aside>
 
@@ -58,7 +63,7 @@
                     <div class="relative w-full">
                         <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                             <svg class="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M10 2a8 8 0 015.292 13.708l4.292 4.292-1.414 1.414-4.292-4.292A8 8 0 1110 2zm0 2a6 6 0 100 12 6 6 0 000-12z"/>
+                                <path d="M10 2a8 8 0 015.292 13.708l4.292 4.292-1.414 1.414-4.292-4.292A8 8 0 1110 2zm0 2a6 6 0 100 12 6 6 0 000-12z" />
                             </svg>
                         </div>
                         <input
@@ -66,8 +71,7 @@
                             name="q"
                             value="{{ request('q') }}"
                             placeholder="Cari pelanggan berdasarkan nama atau alamat"
-                            class="w-full rounded-md border-gray-300 py-2.5 pl-10 pr-4 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        >
+                            class="w-full rounded-md border-gray-300 py-2.5 pl-10 pr-4 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     </div>
                     <button type="submit"
                         class="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">

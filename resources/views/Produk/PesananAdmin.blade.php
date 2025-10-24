@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
   <meta charset="UTF-8" />
-  <title>Daftar Pesanan</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daftar Pesanan</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-white font-sans text-gray-800">
@@ -31,69 +32,46 @@
           <span class="material-icons">groups</span>
           <span class="text-sm font-medium">Pelanggan</span>
         </a>
-        <a href="{{ route('admin.laporan') }}" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4]">
+        <a href="{{ route('admin.laporan') }}" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-gray-100">
           <span class="material-icons">bar_chart</span>
           <span class="text-sm font-medium">Laporan</span>
         </a>
-        <a href="{{ route('chat.admin') }}" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4]">
+        <a href="{{ route('chat.admin') }}" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-gray-100">
           <span class="material-icons">chat</span>
           <span class="text-sm font-medium">Obrolan</span>
+        </a>
+        <a href="{{ route('admin.trafik') }}" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-gray-100">
+          <span class="material-icons">analytics</span>
+          <span class="text-sm font-medium">Trafik</span>
         </a>
       </nav>
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 ml-64 p-6">
+    <main class="flex-1 ml-64 p-8">
       <h2 class="text-3xl font-bold text-gray-900 mb-6">Daftar Pesanan</h2>
 
       @if ($orders->isEmpty())
       <p class="text-gray-600">Belum ada pesanan.</p>
       @else
-      <div class="overflow-x-auto">
-        <table class="min-w-full border border-gray-300">
-          <thead class="bg-gray-100 text-left">
-            <tr>
-              <th class="px-4 py-2 border">Nama User</th>
-              <th class="px-4 py-2 border">Tanggal</th>
-              <th class="px-4 py-2 border">Total</th>
-              <th class="px-4 py-2 border">Status</th>
-              <th class="px-4 py-2 border">Jumlah Item</th>
-              <th class="px-4 py-2 border">Metode Pembayaran</th>
-            </tr>
-          </thead>
-          <tbody>
-            @foreach ($orders as $order)
-            <tr class="hover:bg-gray-50">
-              <td class="px-4 py-2 border">{{ $order->user->name }}</td>
-              <td class="px-4 py-2 border">{{ $order->order_date->format('d-m-Y H:i') }}</td>
-              <td class="px-4 py-2 border">Rp{{ number_format($order->total, 0, ',', '.') }}</td>
-              <td class="px-4 py-2 border capitalize">{{ $order->status }}</td>
-              <td class="px-4 py-2 border">{{ $order->items->count() }} item</td>
-              <td class="px-4 py-2 border capitalize">
-                {{ $order->payment_type ? ucfirst($order->payment_type) : 'Belum dibayar' }}
-              </td>
-            </tr>
-
-            @if ($order->items->count() > 0)
-            <tr>
-              <td colspan="6" class="px-4 py-2 border bg-gray-50">
-                <div class="text-sm font-semibold mb-1">Detail Produk:</div>
-                <ul class="list-disc ml-5 text-sm text-gray-700">
-                  @foreach ($order->items as $item)
-                  <li>
-                    {{ $item->product->nama ?? 'Produk Dihapus' }} - Ukuran: {{ $item->ukuran }},
-                    Qty: {{ $item->jumlah }},
-                    Harga: Rp{{ number_format($item->harga, 0, ',', '.') }}
-                  </li>
-                  @endforeach
-                </ul>
-              </td>
-            </tr>
-            @endif
-
-            @endforeach
-          </tbody>
-        </table>
+      <!-- Grid pesanan -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        @foreach ($orders as $order)
+        <a href="{{ route('admin.detailPesanan', $order->id) }}" class="flex items-center justify-between p-5 bg-[#f8fafc] rounded-2xl shadow-sm hover:shadow-md transition transform hover:-translate-y-1">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">{{ $order->user->name }}</h3>
+            <p class="text-sm text-gray-600">#{{ $order->invoice_number }}</p>
+            <p class="text-xs text-gray-500 mt-1">
+              {{ $order->order_date->format('d M Y, H:i') }}
+            </p>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            stroke-width="1.8" stroke="currentColor" class="w-7 h-7 text-gray-500">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M7.5 3.75h9a2.25 2.25 0 012.25 2.25v12a2.25 2.25 0 01-2.25 2.25h-9A2.25 2.25 0 015.25 18V6a2.25 2.25 0 012.25-2.25z" />
+          </svg>
+        </a>
+        @endforeach
       </div>
       @endif
     </main>
