@@ -38,6 +38,11 @@
                 <span class="material-icons">chat</span>
                 <span class="text-sm font-medium">Obrolan</span>
             </a>
+            <a href="{{ route('admin.trafik') }}" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4]">
+                <span class="material-icons">analytics</span>
+                <span class="text-sm font-medium">Trafik</span>
+            </a>
+
         </nav>
     </aside>
 

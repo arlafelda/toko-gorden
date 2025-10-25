@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Chat;
 use App\Models\Message;
-use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use App\Events\MessageSent;
 
-class AdminChatController extends Controller
+class MessageController extends Controller
 {
-    // Halaman tampilan chat admin
+    // Ambil pesan untuk chat tertentu (by chatId or user pair)
     public function index()
     {
         return view('Admin.ChatAdmin');

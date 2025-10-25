@@ -42,6 +42,11 @@
         <span class="material-icons">chat</span>
         <span class="text-sm font-medium">Obrolan</span>
       </a>
+      <a href="{{ route('admin.trafik') }}" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4]">
+        <span class="material-icons">analytics</span>
+        <span class="text-sm font-medium">Trafik</span>
+      </a>
+
     </nav>
   </aside>
 
@@ -56,9 +61,9 @@
         <p class="text-2xl font-bold text-green-900">Rp {{ number_format($totalPendapatan, 0, ',', '.') }}</p>
       </div>
       <div class="flex flex-col gap-2 bg-blue-100 p-6 rounded-xl min-w-[158px] flex-1">
-  <p class="text-base font-medium text-blue-900">Total Pesanan</p>
-  <p class="text-2xl font-bold text-blue-900">{{ $totalPesanan }}</p>
-</div>
+        <p class="text-base font-medium text-blue-900">Total Pesanan</p>
+        <p class="text-2xl font-bold text-blue-900">{{ $totalPesanan }}</p>
+      </div>
 
       <div class="flex flex-col gap-2 bg-red-100 p-6 rounded-xl min-w-[158px] flex-1">
         <p class="text-base font-medium text-red-900">Pelanggan Baru</p>
@@ -93,63 +98,63 @@
         </tbody>
       </table>
     </div>
-    
+
   </main>
 
   <script>
-  const ctx = document.getElementById('grafikPenjualan').getContext('2d');
+    const ctx = document.getElementById('grafikPenjualan').getContext('2d');
 
-  const chartData = {
-    labels: [],
-    datasets: [{
-      label: 'Pendapatan Harian',
-      data: [],
-      fill: true,
-      borderColor: 'rgb(59, 130, 246)',
-      backgroundColor: 'rgba(59, 130, 246, 0.2)',
-      tension: 0.4
-    }]
-  };
+    const chartData = {
+      labels: [],
+      datasets: [{
+        label: 'Pendapatan Harian',
+        data: [],
+        fill: true,
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+        tension: 0.4
+      }]
+    };
 
-  const salesChart = new Chart(ctx, {
-    type: 'line',
-    data: chartData,
-    options: {
-      responsive: true,
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: function (value) {
-              return 'Rp ' + value.toLocaleString('id-ID');
+    const salesChart = new Chart(ctx, {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return 'Rp ' + value.toLocaleString('id-ID');
+              }
             }
           }
         }
       }
+    });
+
+    // Fungsi mengambil data dari backend
+    function loadTrafikPendapatan(tanggal) {
+      fetch(`/admin/laporan/pendapatan-harian?tanggal=${tanggal}`)
+        .then(response => response.json())
+        .then(data => {
+          chartData.labels = data.labels;
+          chartData.datasets[0].data = data.data;
+          salesChart.update();
+        });
     }
-  });
 
-  // Fungsi mengambil data dari backend
-  function loadTrafikPendapatan(tanggal) {
-    fetch(`/admin/laporan/pendapatan-harian?tanggal=${tanggal}`)
-      .then(response => response.json())
-      .then(data => {
-        chartData.labels = data.labels;
-        chartData.datasets[0].data = data.data;
-        salesChart.update();
-      });
-  }
+    // Ambil tanggal hari ini sebagai default
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
 
-  // Ambil tanggal hari ini sebagai default
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const todayStr = `${yyyy}-${mm}-${dd}`;
-
-  // Load grafik saat pertama kali dashboard dibuka
-  loadTrafikPendapatan(todayStr);
-</script>
+    // Load grafik saat pertama kali dashboard dibuka
+    loadTrafikPendapatan(todayStr);
+  </script>
 
 
 

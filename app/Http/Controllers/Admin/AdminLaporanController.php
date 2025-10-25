@@ -16,7 +16,7 @@ class AdminLaporanController extends Controller
         // Pisah tahun dan bulan
         [$tahun, $bulanNum] = explode('-', $bulan);
         // ambil order sesuai bulan dan status selesai
-        $orders = Order::with('orderItems', 'user')
+        $orders = Order::with('items', 'user')
             ->where('status', 'selesai')
             ->whereYear('order_date', $tahun)
             ->whereMonth('order_date', $bulanNum)

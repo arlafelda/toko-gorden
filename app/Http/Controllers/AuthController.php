@@ -9,10 +9,10 @@ use App\Models\User;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-use App\Models\Product;
 
 class AuthController extends Controller
 {
+    // Menampilkan halaman login
     public function showLoginForm()
     {
         if (Auth::check()) {
@@ -21,6 +21,7 @@ class AuthController extends Controller
         return view('User.loginUser');
     }
 
+    // Login manual
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -40,11 +41,13 @@ class AuthController extends Controller
         ]);
     }
 
+    // Halaman register
     public function showRegisterForm()
     {
         return view('User.RegisterUser');
     }
 
+    // Register user baru
     public function register(Request $request)
     {
         $request->validate([
@@ -64,6 +67,7 @@ class AuthController extends Controller
         return redirect()->route('login')->with('success', 'Registrasi berhasil, silakan login.');
     }
 
+    // Logout
     public function logout(Request $request)
     {
         Auth::logout();
@@ -73,19 +77,25 @@ class AuthController extends Controller
         return redirect()->route('login');
     }
 
-    // Google OAuth Redirect
+    // =========================
+    // Google OAuth
+    // =========================
+
     public function redirectToGoogle()
     {
         return Socialite::driver('google')->redirect();
     }
 
-    // Google OAuth Callback
     public function handleGoogleCallback()
     {
         try {
-            $googleUser = Socialite::driver('google')->user();
+            /** @var \Laravel\Socialite\Two\AbstractProvider $provider */
+            $provider = Socialite::driver('google');
+            $googleUser = $provider->stateless()->user();
 
-            $user = User::where('email', $googleUser->getEmail())->first();
+            $user = User::where('google_id', $googleUser->getId())
+                ->orWhere('email', $googleUser->getEmail())
+                ->first();
 
             if (!$user) {
                 $user = User::create([
@@ -93,28 +103,34 @@ class AuthController extends Controller
                     'email' => strtolower($googleUser->getEmail()),
                     'phone_number' => null,
                     'password' => Hash::make(uniqid()),
+                    'google_id' => $googleUser->getId(),
                 ]);
+            } elseif (!$user->google_id) {
+                $user->update(['google_id' => $googleUser->getId()]);
             }
 
             Auth::login($user);
 
             return redirect()->route('landing');
         } catch (\Exception $e) {
-            return redirect()->route('login')->withErrors(['google' => 'Login Google gagal: ' . $e->getMessage()]);
+            return redirect()->route('login')->withErrors([
+                'google' => 'Login Google gagal: ' . $e->getMessage()
+            ]);
         }
     }
 
-    // ✅ Menampilkan form lupa password
+    // =========================
+    // Lupa Password
+    // =========================
+
     public function showLinkRequestForm()
     {
         return view('User.LupaPassword');
     }
 
-    // ✅ Kirim email reset password ke SEMUA user yang email-nya valid dan terdaftar
     public function sendResetLinkEmail(Request $request)
     {
         $request->validate(['email' => 'required|email']);
-
         $email = strtolower(trim($request->email));
 
         $status = Password::sendResetLink(['email' => $email]);
@@ -124,7 +140,6 @@ class AuthController extends Controller
             : back()->withErrors(['email' => 'Email tidak ditemukan atau belum terdaftar.']);
     }
 
-    // ✅ Menampilkan form untuk mengatur ulang password
     public function showResetForm(Request $request, $token)
     {
         return view('User.PasswordBaru', [
@@ -133,7 +148,6 @@ class AuthController extends Controller
         ]);
     }
 
-    // ✅ Simpan password baru
     public function reset(Request $request)
     {
         $request->validate([
@@ -163,5 +177,4 @@ class AuthController extends Controller
             ? redirect()->route('login')->with('success', 'Kata sandi berhasil diubah.')
             : back()->withErrors(['email' => __($status)]);
     }
-    
 }
