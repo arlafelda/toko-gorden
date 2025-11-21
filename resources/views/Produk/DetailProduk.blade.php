@@ -77,9 +77,9 @@
                         KERANJANG
                     </button>
                     <button onclick="openPopup()"
-                        class="flex-1 bg-gray-800 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-900">
-                        CHECK OUT
-                    </button>
+                        class="flex-1 bg-green-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-green-700 flex items-center justify-center">
+                        BELI SEKARANG
+                        </button>
                 </div>
             </div>
         </div>
