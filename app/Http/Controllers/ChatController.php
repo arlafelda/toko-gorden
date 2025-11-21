@@ -2,122 +2,88 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Chat;
+use App\Events\MessageSent;
+use App\Models\Message;
 use App\Models\User;
-use App\Models\Admin;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use GetStream\StreamChat\Client as StreamClient;
+use Illuminate\Http\Request;
 
 class ChatController extends Controller
 {
-    protected StreamClient $client;
-
-    public function __construct()
+    // ================= USER KIRIM =================
+    public function sendUser(Request $req)
     {
-        $this->client = new StreamClient(
-            config('services.stream.key'),
-            config('services.stream.secret')
-        );
-    }
-
-    // API: buat channel di Stream + simpan di DB
-    public function createChat(Request $request)
-    {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'admin_id' => 'required|exists:admins,id',
+        $message = Message::create([
+            'sender_id'     => auth::id(), // user
+            'sender_type'   => 'user',
+            'receiver_id'   => $req->receiver_id,
+            'receiver_type' => 'admin',
+            'message'       => $req->message
         ]);
 
-        $user = User::findOrFail($request->user_id);
-        $admin = Admin::findOrFail($request->admin_id);
-        $channelId = "chat_{$user->id}_{$admin->id}";
+        broadcast(new MessageSent($message))->toOthers();
 
-        try {
-            $channel = $this->client->channel('messaging', $channelId, [
-                'members' => [(string)$user->id, "admin-{$admin->id}"],
-                'created_by_id' => (string)$user->id,
-            ]);
-            $channel->create('');
-
-            $chat = Chat::firstOrCreate(
-                ['user_id' => $user->id, 'admin_id' => $admin->id],
-                ['channel_id' => $channelId]
-            );
-
-            return response()->json(['success' => true, 'chat' => $chat]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
+        return response()->json(['success' => true]);
     }
 
-    // API: generate token untuk frontend Stream
-    public function generateToken(Request $request)
+    // ================= ADMIN KIRIM =================
+    public function sendAdmin(Request $req)
     {
-        $request->validate([
-            'user_id' => 'required',
-            'user_type' => 'required|in:user,admin',
+        $message = Message::create([
+            'sender_id'     => auth()->guard('admin')->id(),
+            'sender_type'   => 'admin',
+            'receiver_id'   => $req->receiver_id,
+            'receiver_type' => 'user',
+            'message'       => $req->message
         ]);
 
-        $userId = $request->user_type === 'admin' ? 'admin-' . $request->user_id : (string)$request->user_id;
+        broadcast(new MessageSent($message))->toOthers();
 
-        try {
-            $token = $this->client->createToken($userId);
-            return response()->json([
-                'success' => true,
-                'api_key' => config('services.stream.key'),
-                'user_id' => $userId,
-                'token' => $token,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
+        return response()->json(['success' => true]);
     }
 
-    // View user: chat page with adminId
-    public function userChatView($adminId)
+
+    // ================= USER FETCH CHAT =================
+    public function fetch(Request $req)
     {
-        $user = Auth::user();
-        if (!$user) return redirect()->route('login');
-
-        $chat = Chat::firstOrCreate(
-            ['user_id' => $user->id, 'admin_id' => $adminId],
-            ['channel_id' => "chat_{$user->id}_{$adminId}"]
-        );
-        $admin = $chat->admin;
-
-        // view minimal user page (see views below)
-        return view('layouts.Chat', compact('chat', 'user', 'admin'));
+        return Message::where(function ($q) use ($req) {
+            $q->where('sender_id', auth::id())
+              ->where('receiver_id', $req->receiver_id);
+        })->orWhere(function ($q) use ($req) {
+            $q->where('sender_id', $req->receiver_id)
+              ->where('receiver_id', auth::id());
+        })
+        ->orderBy('id', 'ASC')
+        ->get();
     }
 
-    // View admin: admin page (list + panel)
-    public function adminChatView($userId)
+
+
+    // ================= ADMIN CHAT PAGE =================
+    public function adminChatPage()
     {
-        $admin = Auth::guard('admin')->user();
-        if (!$admin) return redirect()->route('admin.login');
-
-        $chat = Chat::firstOrCreate(
-            ['user_id' => $userId, 'admin_id' => $admin->id],
-            ['channel_id' => "chat_{$userId}_{$admin->id}"]
-        );
-
-        return view('admin.chat', compact('chat', 'admin'));
+        return view('Admin.ChatAdmin');
     }
 
-    // Halaman admin list (no userId) — li  sting users/chats
-    public function chatList()
+    // List semua user yang pernah chat
+    public function adminUsers()
     {
-        $admin = Auth::guard('admin')->user();
-        $users = User::select('id', 'name')->get();
-        // generate token for admin to use in view
-        $token = $this->client->createToken('admin-' . $admin->id);
-        return view('admin.chatlist', compact('users', 'token', 'admin'));
+        return User::select('id', 'name')
+                ->orderBy('name')
+                ->get();
     }
 
-    // API: list users (json) untuk sidebar
-    public function userList()
+    // Admin ambil pesan user tertentu
+    public function adminFetchMessages($userId)
     {
-        $users = User::select('id', 'name')->get();
-        return response()->json(['users' => $users]);
+        return Message::where(function ($q) use ($userId) {
+            $q->where('sender_id', $userId)
+              ->where('receiver_id', auth()->guard('admin')->id());
+        })->orWhere(function ($q) use ($userId) {
+            $q->where('sender_id', auth()->guard('admin')->id())
+              ->where('receiver_id', $userId);
+        })
+        ->orderBy('id', 'ASC')
+        ->get();
     }
 }

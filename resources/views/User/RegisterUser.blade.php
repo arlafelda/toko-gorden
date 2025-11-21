@@ -26,6 +26,17 @@
 
         <h1 class="text-3xl font-bold text-gray-800 mb-2">Selamat Datang 👋</h1>
         <p class="text-gray-600 mb-8">Buat akun untuk menikmati pengalaman belanja yang lebih mudah.</p>
+
+        <!-- Tampilkan error validasi -->
+        @if ($errors->any())
+            <div class="mb-6 text-red-600">
+                <ul class="list-disc list-inside">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         
         <form method="POST" action="{{ route('register') }}">
           @csrf
@@ -54,10 +65,10 @@
           </div>
 
           <div class="mb-6">
-            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Nomor Telepon</label>
+            <label for="phone_number" class="block text-sm font-medium text-gray-700 mb-1">Nomor Telepon</label>
             <input
-              id="phone"
-              name="phone"
+              id="phone_number"
+              name="phone_number"
               type="tel"
               placeholder="Nomor Telepon"
               class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -70,7 +81,7 @@
               id="password"
               name="password"
               type="password"
-              placeholder="At least 8 characters"
+              placeholder="At least 6 characters"
               required
               class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -82,7 +93,7 @@
               id="password_confirmation"
               name="password_confirmation"
               type="password"
-              placeholder="At least 8 characters"
+              placeholder="At least 6 characters"
               required
               class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />

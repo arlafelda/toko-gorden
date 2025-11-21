@@ -2,96 +2,116 @@
 <?php if(auth()->guard()->check()): ?>
 <?php
     $userId = auth()->id();
-    $adminId = 5; // ID admin tetap
+    $adminId = 1; // ID Admin default
 ?>
 
 <!-- Tombol Chat -->
 <button onclick="toggleChat()" id="chatButton"
     class="fixed bottom-6 right-6 bg-black text-white rounded-full p-4 shadow-lg z-50 hover:bg-gray-800 transition">
-    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M12 3C6.48 3 2 6.92 2 11.5c0 2.43 1.4 4.6 3.58 6.1L4 21l4.17-1.67
-                 c1.03.3 2.13.47 3.33.47 5.52 0 10-3.92 10-8.5S17.52 3 12 3z"/>
-    </svg>
+    💬
 </button>
 
 <!-- Popup Chat -->
 <div id="chatPopup"
-    class="fixed bottom-24 right-6 bg-white w-80 rounded-xl shadow-lg border border-gray-200 hidden z-50 flex flex-col max-h-[28rem]">
+    class="fixed bottom-24 right-6 bg-white w-80 rounded-xl shadow-lg border border-gray-200 
+           flex flex-col max-h-112 z-50 
+           invisible opacity-0 pointer-events-none transition-all duration-200">
+
+    <!-- Header -->
     <div class="flex justify-between items-center bg-gray-100 px-4 py-3 rounded-t-xl">
-        <h3 class="font-semibold text-gray-700">Chat Toko Gorden</h3>
-        <button onclick="toggleChat()" class="text-gray-500 hover:text-red-500 text-xl leading-none">&times;</button>
+        <h3 class="font-semibold text-gray-700">Chat Admin</h3>
+        <button onclick="toggleChat()" class="text-gray-500 hover:text-red-500 text-xl">&times;</button>
     </div>
+
+    <!-- Box Pesan -->
     <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-2 text-sm text-gray-700"></div>
+
+    <!-- Input -->
     <div class="border-t px-4 py-2 flex gap-2">
-        <input type="text" id="messageInput" placeholder="Tulis pesan..." 
+        <input type="text" id="messageInput" placeholder="Tulis pesan..."
                class="flex-1 border rounded px-3 py-1 text-sm focus:outline-none">
-        <button id="sendBtn" class="text-blue-600 hover:text-blue-800">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-            </svg>
-        </button>
+        <button id="sendBtn" class="text-blue-600 hover:text-blue-800">➤</button>
     </div>
 </div>
 
-<!-- Script Chat Stream -->
-<script src="https://cdn.jsdelivr.net/npm/stream-chat@latest/dist/browser/index.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', async () => {
     const userId = "<?php echo e($userId); ?>";
     const adminId = "<?php echo e($adminId); ?>";
-    
-    window.toggleChat = function() {
+
+    // === Toggle Popup Chat ===
+    function toggleChat() {
         const popup = document.getElementById('chatPopup');
-        popup.classList.toggle('hidden');
-        if (!popup.classList.contains('hidden')) {
-            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+
+        if (popup.classList.contains('invisible')) {
+            popup.classList.remove('invisible', 'opacity-0', 'pointer-events-none');
+            popup.classList.add('opacity-100');
+        } else {
+            popup.classList.add('invisible', 'opacity-0', 'pointer-events-none');
+            popup.classList.remove('opacity-100');
         }
+
+        setTimeout(() => {
+            let m = document.getElementById('messages');
+            m.scrollTop = m.scrollHeight;
+        }, 200);
     }
 
-    // Ambil token dari server
-    const tokenRes = await fetch(`/api/stream/token?user_id=${userId}&user_type=user`);
-    const { token } = await tokenRes.json();
+    // === Load pesan lama ===
+    async function loadMessages() {
+        const res = await fetch(`/chat/fetch?receiver_id=${adminId}`);
+        const data = await res.json();
 
-    // Inisialisasi Stream Chat
-    const client = StreamChat.getInstance("<?php echo e(config('services.stream.key')); ?>");
-    await client.connectUser({ id: userId }, token);
+        const box = document.getElementById('messages');
+        box.innerHTML = "";
 
-    // Channel unik user-admin
-    const channel = client.channel('messaging', `chat_${userId}_${adminId}`);
-    await channel.watch();
+        data.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = msg.sender_type === 'user'
+                ? "bg-blue-100 rounded-lg p-2 w-max ml-auto"
+                : "bg-gray-200 rounded-lg p-2 w-max";
 
-    const messageList = document.getElementById('messages');
-    const input = document.getElementById('messageInput');
+            div.textContent = msg.message;
+            box.appendChild(div);
+        });
 
-    // Render pesan lama
-    channel.state.messages.forEach(msg => {
-        const div = document.createElement('div');
-        div.className = msg.user.id == userId ? 'bg-blue-100 rounded-lg p-2 w-max self-end ml-auto' : 'bg-gray-100 rounded-lg p-2 w-max';
-        div.textContent = msg.user.id + ": " + msg.text;
-        messageList.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    loadMessages();
+
+    // === Kirim pesan ===
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+    document.getElementById('messageInput').addEventListener('keypress', e => {
+        if (e.key === 'Enter') sendMessage();
     });
 
-    // Event: pesan baru masuk
-    channel.on('message.new', event => {
-        const div = document.createElement('div');
-        div.className = event.message.user.id == userId ? 'bg-blue-100 rounded-lg p-2 w-max self-end ml-auto' : 'bg-gray-100 rounded-lg p-2 w-max';
-        div.textContent = event.message.user.id + ": " + event.message.text;
-        messageList.appendChild(div);
-        messageList.scrollTop = messageList.scrollHeight;
-    });
-
-    // Kirim pesan
-    document.getElementById('sendBtn').addEventListener('click', async () => {
-        const text = input.value.trim();
+    async function sendMessage() {
+        let text = document.getElementById('messageInput').value.trim();
         if (!text) return;
-        await channel.sendMessage({ text });
-        input.value = '';
-    });
 
-    input.addEventListener('keypress', async (e) => {
-        if (e.key === 'Enter') document.getElementById('sendBtn').click();
-    });
-});
+        await fetch('/chat/send', {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "<?php echo e(csrf_token()); ?>"
+            },
+            body: JSON.stringify({
+                receiver_id: adminId,
+                receiver_type: "admin",
+                message: text
+            })
+        });
+
+        document.getElementById('messageInput').value = "";
+        loadMessages();
+    }
+
+    // === Realtime Listener ===
+    window.Echo.private(`chat.${userId}.user`)
+        .listen("MessageSent", () => {
+            loadMessages();
+        });
 </script>
+
 <?php endif; ?>
 <?php /**PATH D:\Website\website-gorden\resources\views/layouts/Chat.blade.php ENDPATH**/ ?>

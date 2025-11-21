@@ -17,9 +17,10 @@ class UserOrderController extends Controller
             return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        $orders = Order::with('items')
+        $user = auth::user();
+        $orders = Order::with('items.product')
             ->where('user_id', $user->id)
-            ->latest()
+            ->orderBy('order_date', 'desc')
             ->get();
 
         return view('Produk.PesananUser', compact('orders'));

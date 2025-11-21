@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="id">
 <head>
   <meta charset="utf-8" />
   <meta content="width=device-width, initial-scale=1.0" name="viewport" />
@@ -67,7 +66,7 @@
       </form>
 
       <p class="text-center mt-6 text-sm text-gray-600">
-        Kembali ke <a href="/login" class="text-blue-600 hover:underline">Login</a>
+        Kembali ke <a href="{{ route('login') }}" class="text-blue-600 hover:underline">Login</a>
       </p>
     </div>
 
@@ -97,5 +96,4 @@
     </script>
   @endif
 </body>
-
 </html>

@@ -6,9 +6,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use App\Notifications\PasswordChangedNotification;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Auth\Events\PasswordReset;
+
 
 class AuthController extends Controller
 {
@@ -27,18 +30,31 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required',
+        ], [
+            'email.required' => 'Field wajib diisi',
+            'password.required' => 'Field wajib diisi',
+            'email.email' => 'Format email tidak valid',
         ]);
 
         $credentials['email'] = strtolower(trim($credentials['email']));
 
-        if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-            return redirect()->intended(route('landing'));
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (!$user) {
+            return back()->withErrors([
+                'email' => 'Akun tidak ditemukan',
+            ]);
         }
 
-        return back()->withErrors([
-            'email' => 'Email atau password salah.',
-        ]);
+        if (!Hash::check($credentials['password'], $user->password)) {
+            return back()->withErrors([
+                'password' => 'Password salah',
+            ]);
+        }
+
+        Auth::login($user);
+        $request->session()->regenerate();
+        return redirect()->intended(route('landing'));
     }
 
     // Halaman register
@@ -131,13 +147,20 @@ class AuthController extends Controller
     public function sendResetLinkEmail(Request $request)
     {
         $request->validate(['email' => 'required|email']);
+
         $email = strtolower(trim($request->email));
 
+        // Cek apakah email terdaftar
+        if (!User::where('email', $email)->exists()) {
+            return back()->withErrors(['email' => 'Email tidak terdaftar di sistem kami.']);
+        }
+
+        // Kirim link reset password
         $status = Password::sendResetLink(['email' => $email]);
 
         return $status === Password::RESET_LINK_SENT
-            ? back()->with(['status' => 'Link reset password berhasil dikirim ke email.'])
-            : back()->withErrors(['email' => 'Email tidak ditemukan atau belum terdaftar.']);
+            ? back()->with(['status' => 'Link reset password telah dikirim ke email Anda.'])
+            : back()->withErrors(['email' => 'Gagal mengirim link reset password.']);
     }
 
     public function showResetForm(Request $request, $token)
@@ -153,28 +176,27 @@ class AuthController extends Controller
         $request->validate([
             'token' => 'required',
             'email' => 'required|email',
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'required|min:8|confirmed',
         ]);
 
-        Auth::logout();
-
         $status = Password::reset(
-            [
-                'email' => strtolower(trim($request->email)),
-                'password' => $request->password,
-                'password_confirmation' => $request->password_confirmation,
-                'token' => $request->token,
-            ],
+            $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, $password) {
                 $user->forceFill([
                     'password' => Hash::make($password),
                     'remember_token' => Str::random(60),
                 ])->save();
+
+                // Trigger event bawaan
+                event(new PasswordReset($user));
+
+                // ✅ Kirim notifikasi sederhana via email
+                $user->Notifications(new PasswordChangedNotification() );
             }
         );
 
         return $status === Password::PASSWORD_RESET
-            ? redirect()->route('login')->with('success', 'Kata sandi berhasil diubah.')
+            ? redirect()->route('login')->with('status', 'Kata sandi berhasil diubah. Silakan login kembali.')
             : back()->withErrors(['email' => __($status)]);
     }
 }

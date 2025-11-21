@@ -44,7 +44,7 @@ class MidtransController extends Controller
         $total = 0;
         foreach ($items as $item) {
             $harga = $item->harga ?? $item->product->harga;
-            $total += $harga * $item->quantity;
+            $total += $harga * ($item->quantity ?? 1);
         }
 
         return view('Produk.Transaksi', [
@@ -111,146 +111,139 @@ class MidtransController extends Controller
      * Callback dari Midtrans (dipanggil otomatis)
      */
     public function callback(Request $request)
-{
-    try {
-        $payload = $request->all();
+    {
+        try {
+            $payload = $request->all();
+            Log::info('Midtrans Callback Diterima', $payload);
 
-        Log::info('Midtrans Callback Diterima', $payload);
+            $orderId = $payload['order_id'] ?? null;
+            $status  = $payload['transaction_status'] ?? 'pending';
+            $type    = $payload['payment_type'] ?? 'unknown';
 
-        $orderId = $payload['order_id'] ?? null;
-        $status  = $payload['transaction_status'] ?? 'pending';
-        $type    = $payload['payment_type'] ?? 'unknown';
-
-        $order = Order::where('order_id', $orderId)->first();
-
-        if (!$order) {
-            Log::warning("Order tidak ditemukan: $orderId");
-            return response()->json(['error' => 'Order tidak ditemukan'], 404);
-        }
-
-        DB::beginTransaction();
-
-        $order->update([
-            'status'       => $status,
-            'payment_type' => $type,
-        ]);
-
-        // Jika pembayaran berhasil dan item belum dibuat
-        if (in_array($status, ['settlement', 'capture']) && $order->items()->count() === 0) {
-
-            $userId = $order->user_id;
-
-            // Ambil item keranjang milik user
-            $keranjangItems = KeranjangItem::with(['product', 'keranjang'])
-                ->whereHas('keranjang', fn($q) => $q->where('user_id', $userId))
-                ->get();
-
-            Log::info("Item keranjang ditemukan: {$keranjangItems->count()} item.");
-
-            foreach ($keranjangItems as $item) {
-                $produkId = $item->product_id ?? $item->produk_id; // disesuaikan dengan struktur
-                $harga    = $item->harga ?? $item->product->harga;
-
-                OrderItem::create([
-                    'order_id'  => $order->id,
-                    'produk_id' => $produkId,
-                    'ukuran'    => $item->ukuran,
-                    'jumlah'    => $item->quantity,
-                    'harga'     => (int) $harga,
-                ]);
+            $order = Order::where('order_id', $orderId)->first();
+            if (!$order) {
+                Log::warning("Order tidak ditemukan: $orderId");
+                return response()->json(['error' => 'Order tidak ditemukan'], 404);
             }
 
-            // Bersihkan keranjang user
-            KeranjangItem::whereHas('keranjang', fn($q) => $q->where('user_id', $userId))->delete();
-        }
+            DB::beginTransaction();
 
-        DB::commit();
+            $order->update([
+                'status'       => $status,
+                'payment_type' => $type,
+            ]);
 
-        return response()->json(['message' => 'Pesanan berhasil diproses']);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Midtrans Callback Error: ' . $e->getMessage());
-        return response()->json(['error' => 'Terjadi kesalahan saat memproses pesanan'], 500);
-    }
-}
-/**
- * Simulasi callback untuk testing
- * Hanya digunakan untuk development/testing, jangan digunakan di production
- */
-public function callbackSimulasi(Request $request)
-{
-    try {
-        $payload = $request->all();
+            // Jika pembayaran berhasil dan item belum dibuat
+            if (in_array($status, ['settlement', 'capture']) && $order->items()->count() === 0) {
+                $userId = $order->user_id;
 
-        Log::info('Midtrans Callback Diterima (Simulasi)', $payload);
+                $keranjangItems = KeranjangItem::with(['product', 'keranjang'])
+                    ->whereHas('keranjang', fn($q) => $q->where('user_id', $userId))
+                    ->get();
 
-        $orderId = $payload['order_id'] ?? null;
-        $status  = $payload['transaction_status'] ?? 'pending';
-        $type    = $payload['payment_type'] ?? 'unknown';
+                Log::info("Item keranjang ditemukan: {$keranjangItems->count()} item.");
 
-        $order = Order::where('order_id', $orderId)->first();
+                foreach ($keranjangItems as $item) {
+                    $harga = $item->harga ?? $item->product->harga;
+                    $jumlah = $item->quantity ?? 1;
 
-        if (!$order) {
-            Log::warning("Order tidak ditemukan: $orderId");
-            return response()->json(['error' => 'Order tidak ditemukan'], 404);
-        }
-
-        DB::beginTransaction();
-
-        $order->update([
-            'status'       => $status,
-            'payment_type' => $type,
-        ]);
-
-        if (in_array($status, ['settlement', 'capture']) && $order->items()->count() === 0) {
-            $cartItems = \App\Models\KeranjangItem::with(['product', 'keranjang'])
-                ->whereHas('keranjang', fn($q) => $q->where('user_id', $order->user_id))
-                ->get();
-
-            Log::info("Item keranjang ditemukan: {$cartItems->count()} item.");
-
-            foreach ($cartItems as $item) {
-                if (!$item->product_id || !$item->product) {
-                    Log::warning("Item keranjang tidak valid", [
-                        'item_id'    => $item->id,
-                        'product_id' => $item->product_id,
+                    OrderItem::create([
+                        'order_id'  => $order->id,
+                        'produk_id' => $item->product_id,
+                        'ukuran'    => $item->ukuran,
+                        'jumlah'    => $jumlah,
+                        'harga'     => $harga,
+                        'quantity'  => $jumlah,
+                        'price'     => $harga,
                     ]);
-                    continue;
                 }
 
-                Log::info("Menyimpan OrderItem", [
-                    'order_id'   => $order->id,
-                    'produk_id'  => $item->product_id,
-                    'ukuran'     => $item->ukuran,
-                    'jumlah'     => $item->quantity,
-                    'harga'      => (int) ($item->harga ?? $item->product->harga),
-                ]);
-
-                OrderItem::create([
-                    'order_id'  => $order->id,
-                    'produk_id' => $item->product_id,
-                    'ukuran'    => $item->ukuran,
-                    'jumlah'    => $item->quantity,
-                    'harga'     => (int) ($item->harga ?? $item->product->harga),
-                ]);
+                // Bersihkan keranjang user
+                KeranjangItem::whereHas('keranjang', fn($q) => $q->where('user_id', $userId))->delete();
             }
 
-            \App\Models\KeranjangItem::whereHas('keranjang', fn($q) => $q->where('user_id', $order->user_id))->delete();
+            DB::commit();
+            return response()->json(['message' => 'Pesanan berhasil diproses']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Midtrans Callback Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Terjadi kesalahan saat memproses pesanan'], 500);
         }
-
-        DB::commit();
-        return response()->json(['message' => 'Pesanan berhasil diproses (Simulasi)']);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Midtrans Callback Error (Simulasi): ' . $e->getMessage());
-        return response()->json(['error' => 'Terjadi kesalahan saat memproses pesanan'], 500);
     }
-}
-public function bayarLangsung(Request $request)
-{
-    // Proses pembayaran langsung di sini
-    // Validasi, ambil data produk, dll.
-    // Redirect ke halaman pembayaran atau tampilkan notifikasi sukses
-    return back()->with('success', 'Pembayaran berhasil diproses (dummy).');
-}
+
+    /**
+     * Simulasi callback untuk testing
+     */
+    public function callbackSimulasi(Request $request)
+    {
+        try {
+            $payload = $request->all();
+            Log::info('Midtrans Callback Diterima (Simulasi)', $payload);
+
+            $orderId = $payload['order_id'] ?? null;
+            $status  = $payload['transaction_status'] ?? 'pending';
+            $type    = $payload['payment_type'] ?? 'unknown';
+
+            $order = Order::where('order_id', $orderId)->first();
+            if (!$order) {
+                Log::warning("Order tidak ditemukan: $orderId");
+                return response()->json(['error' => 'Order tidak ditemukan'], 404);
+            }
+
+            DB::beginTransaction();
+
+            $order->update([
+                'status'       => $status,
+                'payment_type' => $type,
+            ]);
+
+            if (in_array($status, ['settlement', 'capture']) && $order->items()->count() === 0) {
+                $cartItems = KeranjangItem::with(['product', 'keranjang'])
+                    ->whereHas('keranjang', fn($q) => $q->where('user_id', $order->user_id))
+                    ->get();
+
+                Log::info("Item keranjang ditemukan: {$cartItems->count()} item.");
+
+                foreach ($cartItems as $item) {
+                    if (!$item->product_id || !$item->product) {
+                        Log::warning("Item keranjang tidak valid", [
+                            'item_id'    => $item->id,
+                            'product_id' => $item->product_id,
+                        ]);
+                        continue;
+                    }
+
+                    $harga = $item->harga ?? $item->product->harga;
+                    $jumlah = $item->quantity ?? 1;
+
+                    OrderItem::create([
+                        'order_id'  => $order->id,
+                        'produk_id' => $item->product_id,
+                        'ukuran'    => $item->ukuran,
+                        'jumlah'    => $jumlah,
+                        'harga'     => $harga,
+                        'quantity'  => $jumlah,
+                        'price'     => $harga,
+                    ]);
+                }
+
+                KeranjangItem::whereHas('keranjang', fn($q) => $q->where('user_id', $order->user_id))->delete();
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Pesanan berhasil diproses (Simulasi)']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Midtrans Callback Error (Simulasi): ' . $e->getMessage());
+            return response()->json(['error' => 'Terjadi kesalahan saat memproses pesanan'], 500);
+        }
+    }
+
+    /**
+     * Bayar langsung (dummy)
+     */
+    public function bayarLangsung(Request $request)
+    {
+        return back()->with('success', 'Pembayaran berhasil diproses (dummy).');
+    }
 }

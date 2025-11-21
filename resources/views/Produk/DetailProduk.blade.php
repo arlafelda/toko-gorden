@@ -44,7 +44,7 @@
                 $rating = round($product->averageRating(), 1);
                 @endphp
                 <div class="flex items-center mt-1">
-                    @for ($i = 1; $i <= 5; $i++)    
+                    @for ($i = 1; $i <= 5; $i++)
                         @if($rating>= $i)
                         <!-- Bintang Penuh -->
                         <svg class="w-5 h-5 text-yellow-400 fill-current" viewBox="0 0 24 24">
@@ -86,7 +86,7 @@
     </div>
 
     <!-- Popup Pilih Ukuran -->
-    <div id="popupUkuran" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+    <div id="popupUkuran" class="fixed inset-0 bg-black bg-opacity-40 items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg w-full max-w-md overflow-hidden shadow-lg">
             <div class="p-4 border-b flex justify-between items-start">
                 <div class="flex items-center gap-4">
@@ -216,12 +216,17 @@
         const stokInfo = document.getElementById('stokInfo');
 
         function openPopup() {
-            document.getElementById('popupUkuran').classList.remove('hidden');
+            const popup = document.getElementById('popupUkuran');
+            popup.classList.remove('hidden');
+            popup.classList.add('flex');
         }
 
         function closePopup() {
-            document.getElementById('popupUkuran').classList.add('hidden');
+            const popup = document.getElementById('popupUkuran');
+            popup.classList.add('hidden');
+            popup.classList.remove('flex');
         }
+
 
         function formatRupiah(number) {
             return new Intl.NumberFormat('id-ID', {
@@ -270,6 +275,7 @@
 
             document.querySelector('form').submit();
         }
+
         function submitFormCheckout() {
             if (!selectedUkuran) {
                 alert('Silakan pilih ukuran terlebih dahulu.');

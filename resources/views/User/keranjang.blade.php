@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -15,10 +16,10 @@
 
       {{-- Alert Success/Error --}}
       @if(session('success'))
-        <div class="mb-4 p-4 bg-green-100 text-green-700 rounded">{{ session('success') }}</div>
+      <div class="mb-4 p-4 bg-green-100 text-green-700 rounded">{{ session('success') }}</div>
       @endif
       @if(session('error'))
-        <div class="mb-4 p-4 bg-red-100 text-red-700 rounded">{{ session('error') }}</div>
+      <div class="mb-4 p-4 bg-red-100 text-red-700 rounded">{{ session('error') }}</div>
       @endif
 
       {{-- Jika ada item --}}
@@ -37,8 +38,8 @@
 
           @foreach($keranjangItems as $item)
           @php
-            $harga = $item->harga ?? ($item->product->harga ?? 0);
-            $subtotal = $harga * $item->quantity;
+          $harga = $item->harga ?? ($item->product->harga ?? 0);
+          $subtotal = $harga * $item->quantity;
           @endphp
           <div class="grid grid-cols-12 gap-4 p-4 items-center border-b hover:bg-gray-50">
             <div class="col-span-1">
@@ -47,12 +48,12 @@
 
             <div class="col-span-4 flex items-center gap-3">
               @if($item->product)
-                <img src="{{ asset('uploads/' . ($item->product->gambar ?? 'default.png')) }}" class="w-20 h-20 object-cover rounded" />
-                <div>
-                  <p class="font-semibold">{{ $item->product->nama_produk }}</p>
-                </div>
+              <img src="{{ asset('uploads/' . ($item->product->gambar ?? 'default.png')) }}" class="w-20 h-20 object-cover rounded" />
+              <div>
+                <p class="font-semibold">{{ $item->product->nama_produk }}</p>
+              </div>
               @else
-                <p class="text-red-500">Produk tidak ditemukan</p>
+              <p class="text-red-500">Produk tidak ditemukan</p>
               @endif
             </div>
 
@@ -64,13 +65,17 @@
               <span class="text-xs text-gray-500">Stok: {{ $item->stok }}</span>
             </div>
             <div class="col-span-2">Rp {{ number_format($subtotal, 0, ',', '.') }}</div>
+
+            {{-- Tombol hapus sudah diperbaiki --}}
             <div class="col-span-1">
               @if($item->product)
-              <form action="{{ route('keranjang.hapus', $item->id) }}" method="POST" onsubmit="return confirm('Hapus produk ini?')">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="text-red-500 hover:text-red-700">Hapus</button>
-              </form>
+              <button
+                type="button"
+                class="text-red-500 hover:text-red-700"
+                onclick="hapusItem(`{{ route('keranjang.hapus', $item->id) }}`)">
+                Hapus
+              </button>
+
               @endif
             </div>
           </div>
@@ -113,7 +118,7 @@
 
   {{-- Script --}}
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", function() {
       function formatRupiah(angka) {
         return new Intl.NumberFormat("id-ID", {
           style: "currency",
@@ -142,7 +147,7 @@
 
       const selectAll = document.getElementById('selectAll');
       if (selectAll) {
-        selectAll.addEventListener('change', function () {
+        selectAll.addEventListener('change', function() {
           document.querySelectorAll('.item-checkbox').forEach(cb => {
             cb.checked = this.checked;
           });
@@ -150,7 +155,7 @@
         });
       }
 
-      window.prepareCheckoutItems = function (event) {
+      window.prepareCheckoutItems = function(event) {
         event.preventDefault();
         const checkboxes = document.querySelectorAll('.item-checkbox:checked');
         const form = document.getElementById('checkoutForm');
@@ -173,7 +178,32 @@
         form.submit();
       };
     });
+
+    // 🔥 Fungsi hapus item (versi fix)
+    function hapusItem(url) {
+      if (confirm('Apakah kamu yakin ingin menghapus produk ini dari keranjang?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+
+        const token = document.createElement('input');
+        token.type = 'hidden';
+        token.name = '_token';
+        token.value = '{{ csrf_token() }}';
+        form.appendChild(token);
+
+        const method = document.createElement('input');
+        method.type = 'hidden';
+        method.name = '_method';
+        method.value = 'DELETE';
+        form.appendChild(method);
+
+        document.body.appendChild(form);
+        form.submit();
+      }
+    }
   </script>
 
 </body>
+
 </html>

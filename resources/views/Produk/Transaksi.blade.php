@@ -76,9 +76,13 @@
 
       <!-- Tombol Bayar & Batal -->
       <div class="mt-6 flex justify-end gap-4">
-        <a href="{{ route('keranjang.tampil') }}" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded shadow">
-          Batal
-        </a>
+        <button 
+  onclick="window.history.back()" 
+  class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded shadow"
+>
+  Batal
+</button>
+
         <button
           id="pay-button"
           class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded shadow"

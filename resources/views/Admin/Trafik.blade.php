@@ -47,11 +47,11 @@
     <!-- Main Content -->
     <main class="ml-80 px-10 py-6">
         <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">Trafik Pengunjung</h1>
-            <p class="text-sm text-gray-500">Analisis trafik pengunjung toko Anda.</p>
+            <h1 class="text-3xl font-bold text-gray-900">Trafik Admin</h1>
+            <p class="text-sm text-gray-500">Analisis trafik pengunjung dan penjualan toko Anda.</p>
         </div>
 
-        <!-- Statistik -->
+        <!-- Statistik Pengunjung -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="border rounded-xl p-6">
                 <p class="text-base font-medium text-blue-900">Total Pengunjung</p>
@@ -74,29 +74,62 @@
             </div>
         </div>
 
+        <!-- Statistik Penjualan -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="border rounded-xl p-6">
+                <p class="text-base font-medium text-blue-900">Total Pesanan</p>
+                <p class="text-3xl font-bold text-blue-900 truncate">{{ $totalPesanan }}</p>
+            </div>
+
+            <div class="border rounded-xl p-6">
+                <p class="text-base font-medium text-green-900">Hari Ini</p>
+                <p class="text-3xl font-bold text-green-900 truncate">{{ $pesananHariIni }}</p>
+            </div>
+
+            <div class="border rounded-xl p-6">
+                <p class="text-base font-medium text-orange-900">Minggu Ini</p>
+                <p class="text-3xl font-bold text-orange-900 truncate">{{ $pesananMingguIni }}</p>
+            </div>
+
+            <div class="border rounded-xl p-6">
+                <p class="text-base font-medium text-purple-900">Bulan Ini</p>
+                <p class="text-3xl font-bold text-purple-900 truncate">{{ $pesananBulanIni }}</p>
+            </div>
+        </div>
+
         <!-- Grafik Trafik Harian -->
         <div class="mt-10">
-            <h2 class="text-xl font-bold text-gray-900 mb-4">Trafik Pengunjung Harian (7 Hari Terakhir)</h2>
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Trafik Harian (7 Hari Terakhir)</h2>
             <div class="bg-white p-4 border rounded-xl w-full overflow-x-auto">
                 <canvas id="trafficChart" height="100"></canvas>
             </div>
         </div>
     </main>
 
-    <!-- Script -->
+    <!-- Script Chart -->
     <script>
         const ctx = document.getElementById('trafficChart').getContext('2d');
 
         const chartData = {
             labels: [],
-            datasets: [{
-                label: 'Pengunjung Harian',
-                data: [],
-                fill: true,
-                borderColor: 'rgb(59, 130, 246)',
-                backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                tension: 0.4
-            }]
+            datasets: [
+                {
+                    label: 'Pengunjung Harian',
+                    data: [],
+                    fill: true,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    tension: 0.4
+                },
+                {
+                    label: 'Penjualan Harian',
+                    data: [],
+                    fill: true,
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                    tension: 0.4
+                }
+            ]
         };
 
         const trafficChart = new Chart(ctx, {
@@ -117,11 +150,12 @@
         fetch('{{ route("admin.trafik.data") }}')
             .then(response => response.json())
             .then(data => {
-                chartData.labels = data.map(item => {
+                chartData.labels = data.pengunjung.map(item => {
                     const date = new Date(item.date);
                     return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
                 });
-                chartData.datasets[0].data = data.map(item => item.count);
+                chartData.datasets[0].data = data.pengunjung.map(item => item.count);
+                chartData.datasets[1].data = data.penjualan.map(item => item.count);
                 trafficChart.update();
             })
             .catch(error => console.error('Error loading traffic data:', error));

@@ -9,12 +9,14 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
         Schema::create('messages', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('sender_id')->constrained('users');
-            $table->foreignId('receiver_id')->constrained('users');
+            $table->unsignedBigInteger('sender_id');
+            $table->enum('sender_type', ['user', 'admin']); // bedain pengirim
+            $table->unsignedBigInteger('receiver_id');
+            $table->enum('receiver_type', ['user', 'admin']); // bedain penerima
             $table->text('message');
             $table->timestamps();
         });

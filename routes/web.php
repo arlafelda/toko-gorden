@@ -50,24 +50,8 @@ Route::get('/', [UserController::class, 'landingPage'])->name('landing');
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register', [AuthController::class, 'register'])->name('register');
 
-// Chat routes for users
-Route::middleware('auth')->group(function () {
-    Route::get('/chat', [ChatController::class, 'userIndex'])->name('chat.user');
-    Route::get('/chat/admin-list', [ChatController::class, 'getAdminList'])->name('chat.admin-list');
-    Route::get('/chat/messages/{receiver_id}/{receiver_type}', [ChatController::class, 'getMessages'])->name('chat.messages');
-    Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
-});
-
-// Chat routes for admin
-Route::middleware('auth:admin')->prefix('admin')->group(function () {
-    Route::get('/chat', [ChatController::class, 'adminIndex'])->name('admin.chat');
-    Route::get('/chat/user-list', [ChatController::class, 'getUserList'])->name('admin.chat.user-list');
-    Route::get('/chat/messages/{receiver_id}/{receiver_type}', [ChatController::class, 'getMessages'])->name('admin.chat.messages');
-    Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('admin.chat.send');
-    Route::get('/chat/stats', [ChatController::class, 'getChatStats'])->name('admin.chat.stats');
-});
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
 // Google OAuth routes
@@ -110,25 +94,25 @@ Route::post('/ulasan', [ReviewController::class, 'store'])->name('ulasan.store')
 // Pesanan user
 Route::middleware(['auth'])->get('/pesanan', [UserOrderController::class, 'index'])->name('pesanan.user');
 
-// Chat user
-Route::middleware('auth')->group(function () {
-    Route::post('/chat/send', [ChatController::class, 'send']);
-    Route::get('/chat/messages/{withUserId}', [ChatController::class, 'getMessages']);
-});
-
 // ----------------------
 //         ADMIN
 // ----------------------
 
 // Login admin
-Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
-Route::post('/admin/login', [AdminAuthController::class, 'login']);
-Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
+Route::prefix('admin')->name('admin.')->group(function () {
 
-// Dashboard admin
-Route::middleware(['auth:admin'])->group(function () {
-    Route::get('/admin/dashboard', [AdminAuthController::class, 'index'])->name('admin.dashboard');
+    // Login admin
+    Route::get('/login', [AdminAuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [AdminAuthController::class, 'login']);
+    Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
+
+    // Dashboard
+    Route::middleware('auth:admin')->group(function () {
+        Route::get('/dashboard', [AdminAuthController::class, 'index'])->name('dashboard');
+    });
+
 });
+
 
 // CRUD Produk
 Route::middleware(['auth:admin'])->prefix('admin')->group(function () {
@@ -163,21 +147,45 @@ Route::middleware(['auth:admin'])->group(function () {
     Route::get('/admin/pelanggan', [AdminPelangganController::class, 'index'])->name('admin.pelanggan');
 });
 
-// Chat admin
-Route::middleware(['auth:admin'])->group(function () {
-    Route::get('/admin/chat', [MessageController::class, 'index'])->name('chat.admin');
-    Route::get('/admin/chat/users', [MessageController::class, 'getUsers']);
-    Route::get('/admin/chat/messages/{userId}', [MessageController::class, 'getMessages']);
-    Route::post('/admin/chat/send', [MessageController::class, 'sendMessage']);
-});
-
 // Simulasi callback Midtrans (untuk testing)
 Route::post('/simulasi-callback', [MidtransController::class, 'callbackSimulasi']);
 
 // ----------------------
 //      BELI LANGSUNG
 // ----------------------
-Route::post('/produk/{product}/beli-langsung', [ProductController::class, 'beliLangsung'])->name('produk.beliLangsung');
-Route::get('/checkout/beli-langsung', [ProductController::class, 'checkoutBeliLangsung'])->name('checkout.beliLangsung');
-Route::post('/bayar-langsung', [MidtransController::class, 'bayarLangsung'])->name('midtrans.bayarLangsung');
-Route::post('/checkout/langsung/{product}', [ProductController::class, 'checkoutLangsung'])->name('produk.checkoutLangsung');
+Route::post('/produk/{product}/beli-langsung', [ProductController::class, 'beliLangsung'])
+    ->name('produk.beliLangsung');
+
+Route::get('/checkout/beli-langsung', [ProductController::class, 'checkoutBeliLangsung'])
+    ->middleware('auth')
+    ->name('checkout.beliLangsung');
+
+Route::post('/bayar-langsung', [MidtransController::class, 'bayarLangsung'])
+    ->name('midtrans.bayarLangsung');
+
+Route::post('/checkout/langsung/{product}', [ProductController::class, 'checkoutLangsung'])
+    ->name('produk.checkoutLangsung');
+
+Route::post('/checkout/batal', [MidtransController::class, 'batalCheckout'])
+    ->name('batal.checkout');
+
+
+
+
+
+Route::middleware(['auth'])->group(function () {
+
+    Route::get('/chat/fetch', [ChatController::class, 'fetch'])->name('chat.fetch');
+    Route::post('/chat/send-user', [ChatController::class, 'sendUser'])->name('chat.send.user');
+
+});
+
+Route::prefix('admin')->middleware(['auth:admin'])->group(function () {
+
+    Route::get('/chat', [ChatController::class, 'adminChatPage'])->name('chat.admin');
+    Route::get('/chat/users', [ChatController::class, 'adminUsers'])->name('chat.admin.users');
+    Route::get('/chat/messages/{userId}', [ChatController::class, 'adminFetchMessages'])->name('chat.admin.messages');
+
+    Route::post('/chat/send-admin', [ChatController::class, 'sendAdmin'])->name('chat.send.admin');
+});
+

@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
+    use HasFactory;
     // Jika nama tabel berbeda dari 'orders', gunakan: protected $table = 'nama_tabel';
 
     protected $fillable = [
@@ -15,7 +17,6 @@ class Order extends Model
         'total',
         'status',
         'payment_type',
-        'invoice_number',
     ];
 
     protected $casts = [

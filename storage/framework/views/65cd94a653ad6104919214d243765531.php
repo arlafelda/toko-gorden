@@ -42,10 +42,13 @@
         <span class="material-icons">chat</span>
         <span class="text-sm font-medium">Obrolan</span>
       </a>
-      <a href="<?php echo e(route('admin.trafik')); ?>" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4]">
-        <span class="material-icons">analytics</span>
-        <span class="text-sm font-medium">Trafik</span>
-      </a>
+      <form action="<?php echo e(route('admin.logout')); ?>" method="POST">
+    <?php echo csrf_field(); ?>
+    <button type="submit" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4] w-full text-left">
+        <span class="material-icons">logout</span>
+        <span class="text-sm font-medium">Logout</span>
+    </button>
+</form>
 
     </nav>
   </aside>

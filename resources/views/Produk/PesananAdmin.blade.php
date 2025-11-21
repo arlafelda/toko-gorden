@@ -7,7 +7,6 @@
   <title>Daftar Pesanan</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-white font-sans text-gray-800">
@@ -52,7 +51,7 @@
       <h2 class="text-3xl font-bold text-gray-900 mb-6">Daftar Pesanan</h2>
 
       @if ($orders->isEmpty())
-      <p class="text-gray-600">Belum ada pesanan.</p>
+      <p class="text-gray-600">Belum ada pesanan yang sudah dibayar.</p>
       @else
       <!-- Grid pesanan -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

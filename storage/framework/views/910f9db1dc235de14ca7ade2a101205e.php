@@ -43,6 +43,10 @@
           <span class="material-icons">chat</span>
           <span>Obrolan</span>
         </a>
+        <a href="<?php echo e(route('admin.trafik')); ?>" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4]">
+        <span class="material-icons">analytics</span>
+        <span class="text-sm font-medium">Trafik</span>
+      </a>
       </nav>
     </aside>
 
@@ -87,78 +91,90 @@
     </main>
   </div>
 
-  <script>
-    let selectedUserId = null;
-    const adminId = document.body.dataset.adminId;
-    let allUsers = [];
+ <script>
+let selectedUserId = null;
+const adminId = document.body.dataset.adminId;
+let allUsers = [];
 
-    function loadUsers() {
-      axios.get('/admin/chat/users')
+// === LOAD USER LIST ===
+function loadUsers() {
+    axios.get('/admin/chat/users')
         .then(res => {
-          allUsers = res.data.users;
-          renderUserList(allUsers);
-        })
-        .catch(() => {
-          document.getElementById('userList').innerHTML = '<p class="p-4 text-red-500">Gagal memuat data pengguna.</p>';
+            allUsers = res.data.users;
+            renderUserList(allUsers);
         });
-    }
+}
 
-    function renderUserList(users) {
-      const userList = document.getElementById('userList');
-      userList.innerHTML = '';
-      if (users.length === 0) {
-        userList.innerHTML = '<p class="p-4 text-sm text-gray-500">Tidak ada pengguna ditemukan.</p>';
-        return;
-      }
-      users.forEach(user => {
+function renderUserList(users) {
+    const userList = document.getElementById('userList');
+    userList.innerHTML = '';
+
+    users.forEach(user => {
         const el = document.createElement('div');
         el.className = 'p-4 hover:bg-gray-100 cursor-pointer';
         el.innerHTML = `<h3 class="text-sm font-semibold">${user.name}</h3>`;
-        el.onclick = () => selectUser(user.id, user.name);
+        el.onclick = () => selectUser(user.id);
         userList.appendChild(el);
-      });
-    }
+    });
+}
 
-    function filterUsers() {
-      const keyword = document.getElementById('searchUserInput').value.toLowerCase();
-      const filtered = allUsers.filter(user => user.name.toLowerCase().includes(keyword));
-      renderUserList(filtered);
-    }
+function selectUser(userId) {
+    selectedUserId = userId;
 
-    function selectUser(userId, userName) {
-      selectedUserId = userId;
-      document.getElementById('sendBtn').disabled = false;
-      axios.get(`/admin/chat/messages/${userId}`)
+    axios.get(`/admin/chat/messages/${userId}`)
         .then(res => {
-          const messages = res.data;
-          const chatBox = document.getElementById('chatMessages');
-          chatBox.innerHTML = '';
-          messages.forEach(msg => {
-            const isAdmin = msg.sender_id == adminId;
-            const div = document.createElement('div');
-            div.className = `flex ${isAdmin ? 'justify-end' : 'justify-start'} gap-3`;
-            div.innerHTML = `<div class="${isAdmin ? 'bg-blue-100' : 'bg-gray-200'} rounded-xl px-4 py-2 max-w-lg"><p class="text-sm">${msg.message}</p></div>`;
-            chatBox.appendChild(div);
-          });
-          chatBox.scrollTop = chatBox.scrollHeight;
-        });
-    }
+            const messages = res.data;
+            const box = document.getElementById('chatMessages');
+            box.innerHTML = "";
 
-    document.getElementById('sendBtn').addEventListener('click', () => {
-      const input = document.getElementById('chatInput');
-      const msg = input.value.trim();
-      if (!msg || !selectedUserId) return;
-      axios.post('/admin/chat/send', {
+            messages.forEach(msg => {
+                const div = document.createElement('div');
+                const isAdmin = msg.sender_type === 'admin';
+
+                div.className = isAdmin
+                    ? "flex justify-end"
+                    : "flex justify-start";
+
+                div.innerHTML = `
+                    <div class="${isAdmin ? 'bg-blue-100' : 'bg-gray-200'} rounded-xl px-4 py-2 max-w-lg">
+                        ${msg.message}
+                    </div>
+                `;
+
+                box.appendChild(div);
+            });
+
+            box.scrollTop = box.scrollHeight;
+        });
+}
+
+// === SEND MESSAGE ===
+document.getElementById('sendBtn').addEventListener('click', () => {
+    const msg = document.getElementById('chatInput').value.trim();
+    if (!msg || !selectedUserId) return;
+
+    axios.post('/admin/chat/send', {
         receiver_id: selectedUserId,
+        receiver_type: "user",
         message: msg
-      }).then(() => {
-        selectUser(selectedUserId);
-        input.value = '';
-      });
     });
 
-    document.addEventListener('DOMContentLoaded', loadUsers);
-  </script>
+    document.getElementById('chatInput').value = "";
+    selectUser(selectedUserId);
+});
+
+// === LISTEN REALTIME ADMIN CHANNEL ===
+window.Echo.private(`chat.${adminId}.admin`)
+    .listen("MessageSent", (e) => {
+        if (selectedUserId == e.message.sender_id) {
+            selectUser(selectedUserId);
+        }
+        loadUsers();
+    });
+
+document.addEventListener('DOMContentLoaded', loadUsers);
+</script>
+
 
 </body>
 </html><?php /**PATH D:\Website\website-gorden\resources\views/Admin/ChatAdmin.blade.php ENDPATH**/ ?>
