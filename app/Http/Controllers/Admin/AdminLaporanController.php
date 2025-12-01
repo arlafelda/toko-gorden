@@ -10,20 +10,21 @@ class AdminLaporanController extends Controller
 {
     public function index(Request $request)
     {
-        // Ambil bulan dari filter
-        $bulan = $request->get('bulan', now()->format('Y-m')); // default bulan ini
-
-        // Pisah tahun dan bulan
+        $bulan = $request->get('bulan', now()->format('Y-m'));
         [$tahun, $bulanNum] = explode('-', $bulan);
-        // ambil order sesuai bulan dan status selesai
-        $orders = Order::with('items', 'user')
+
+        $orders = Order::with(['items.product', 'user'])
             ->where('status', 'selesai')
+            ->where('is_reported', true)
             ->whereYear('order_date', $tahun)
             ->whereMonth('order_date', $bulanNum)
             ->get();
 
-        // total pendapatan
-        $totalPendapatan = $orders->sum('total');
+        $totalPendapatan = $orders->sum(function($order) {
+            return $order->items->sum(function($item) {
+                return $item->harga * $item->jumlah;
+            });
+        });
 
         return view('Admin.Laporan', compact('orders', 'bulan', 'totalPendapatan'));
     }

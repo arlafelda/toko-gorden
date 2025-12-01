@@ -32,20 +32,16 @@ class MidtransController extends Controller
 
         $items = KeranjangItem::with(['product', 'keranjang'])
             ->whereIn('id', $itemIds)
-            ->get()
-            ->filter(function ($item) {
-                return $item->keranjang && $item->keranjang->user_id === Auth::id();
-            });
+            ->whereHas('keranjang', fn($q) => $q->where('user_id', Auth::id()))
+            ->get();
 
         if ($items->isEmpty()) {
             return redirect()->route('keranjang.tampil')->with('error', 'Tidak ada item yang valid.');
         }
 
-        $total = 0;
-        foreach ($items as $item) {
-            $harga = $item->harga ?? $item->product->harga;
-            $total += $harga * ($item->quantity ?? 1);
-        }
+        $total = $items->sum(function ($item) {
+            return ($item->harga ?? $item->product->harga) * $item->quantity;
+        });
 
         return view('Produk.Transaksi', [
             'items' => $items,
@@ -65,22 +61,21 @@ class MidtransController extends Controller
             return response()->json(['error' => 'Jumlah pembayaran tidak valid'], 422);
         }
 
-        Config::$serverKey    = config('midtrans.server_key');
-        Config::$clientKey    = config('midtrans.client_key');
+        Config::$serverKey = config('midtrans.server_key');
+        Config::$clientKey = config('midtrans.client_key');
         Config::$isProduction = config('midtrans.is_production');
-        Config::$isSanitized  = config('midtrans.sanitized');
-        Config::$is3ds        = config('midtrans.3ds');
+        Config::$isSanitized = true;
+        Config::$is3ds = true;
 
         $user = Auth::user();
         $orderId = uniqid('ORDER-');
 
         $order = Order::create([
-            'order_id'     => $orderId,
-            'user_id'      => $user->id,
-            'order_date'   => now(),
-            'total'        => $amount,
-            'status'       => 'pending',
-            'payment_type' => null,
+            'order_id' => $orderId,
+            'user_id'  => $user->id,
+            'order_date' => now(),
+            'total'    => $amount,
+            'status'   => 'pending',
         ]);
 
         $params = [
@@ -92,82 +87,63 @@ class MidtransController extends Controller
                 'first_name' => $user->name,
                 'email'      => $user->email,
                 'phone'      => $user->phone_number ?? '08123456789',
-                'billing_address' => [
-                    'address' => $user->address ?? 'Alamat tidak tersedia',
-                ],
-            ],
+            ]
         ];
 
         try {
-            $snapToken = Snap::getSnapToken($params);
-            return response()->json(['token' => $snapToken]);
+            return response()->json(['token' => Snap::getSnapToken($params)]);
         } catch (\Exception $e) {
-            Log::error('Gagal mendapatkan Snap Token Midtrans: ' . $e->getMessage());
-            return response()->json(['error' => 'Gagal mendapatkan Snap Token'], 500);
+            Log::error('Midtrans Error: '.$e->getMessage());
+            return response()->json(['error' => 'Gagal dapat Token'], 500);
         }
     }
 
     /**
-     * Callback dari Midtrans (dipanggil otomatis)
+     * Callback dari Midtrans
      */
     public function callback(Request $request)
     {
         try {
-            $payload = $request->all();
-            Log::info('Midtrans Callback Diterima', $payload);
-
-            $orderId = $payload['order_id'] ?? null;
-            $status  = $payload['transaction_status'] ?? 'pending';
-            $type    = $payload['payment_type'] ?? 'unknown';
+            $orderId = $request->order_id;
+            $status  = $request->transaction_status;
 
             $order = Order::where('order_id', $orderId)->first();
-            if (!$order) {
-                Log::warning("Order tidak ditemukan: $orderId");
-                return response()->json(['error' => 'Order tidak ditemukan'], 404);
-            }
+
+            if (!$order) return response()->json(['error' => 'Order tidak ditemukan'], 404);
 
             DB::beginTransaction();
 
             $order->update([
                 'status'       => $status,
-                'payment_type' => $type,
+                'payment_type' => $request->payment_type ?? 'unknown',
             ]);
 
-            // Jika pembayaran berhasil dan item belum dibuat
             if (in_array($status, ['settlement', 'capture']) && $order->items()->count() === 0) {
-                $userId = $order->user_id;
 
-                $keranjangItems = KeranjangItem::with(['product', 'keranjang'])
-                    ->whereHas('keranjang', fn($q) => $q->where('user_id', $userId))
+                $items = KeranjangItem::with('product')
+                    ->whereHas('keranjang', fn($q) => $q->where('user_id', $order->user_id))
                     ->get();
 
-                Log::info("Item keranjang ditemukan: {$keranjangItems->count()} item.");
-
-                foreach ($keranjangItems as $item) {
-                    $harga = $item->harga ?? $item->product->harga;
-                    $jumlah = $item->quantity ?? 1;
-
+                foreach ($items as $item) {
                     OrderItem::create([
                         'order_id'  => $order->id,
                         'produk_id' => $item->product_id,
                         'ukuran'    => $item->ukuran,
-                        'jumlah'    => $jumlah,
-                        'harga'     => $harga,
-                        'quantity'  => $jumlah,
-                        'price'     => $harga,
+                        'quantity'  => $item->quantity,  // sesuai DB
+                        'price'     => $item->harga ?? $item->product->harga, // sesuai DB
                     ]);
                 }
 
-                // Bersihkan keranjang user
-                KeranjangItem::whereHas('keranjang', fn($q) => $q->where('user_id', $userId))->delete();
+                KeranjangItem::whereHas('keranjang', fn($q) => $q->where('user_id', $order->user_id))->delete();
             }
 
             DB::commit();
             return response()->json(['message' => 'Pesanan berhasil diproses']);
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Midtrans Callback Error: ' . $e->getMessage());
-            return response()->json(['error' => 'Terjadi kesalahan saat memproses pesanan'], 500);
+            Log::error("Callback Error: ".$e->getMessage());
+            return response()->json(['error' => 'Terjadi Kesalahan'], 500);
         }
     }
 
@@ -176,73 +152,10 @@ class MidtransController extends Controller
      */
     public function callbackSimulasi(Request $request)
     {
-        try {
-            $payload = $request->all();
-            Log::info('Midtrans Callback Diterima (Simulasi)', $payload);
-
-            $orderId = $payload['order_id'] ?? null;
-            $status  = $payload['transaction_status'] ?? 'pending';
-            $type    = $payload['payment_type'] ?? 'unknown';
-
-            $order = Order::where('order_id', $orderId)->first();
-            if (!$order) {
-                Log::warning("Order tidak ditemukan: $orderId");
-                return response()->json(['error' => 'Order tidak ditemukan'], 404);
-            }
-
-            DB::beginTransaction();
-
-            $order->update([
-                'status'       => $status,
-                'payment_type' => $type,
-            ]);
-
-            if (in_array($status, ['settlement', 'capture']) && $order->items()->count() === 0) {
-                $cartItems = KeranjangItem::with(['product', 'keranjang'])
-                    ->whereHas('keranjang', fn($q) => $q->where('user_id', $order->user_id))
-                    ->get();
-
-                Log::info("Item keranjang ditemukan: {$cartItems->count()} item.");
-
-                foreach ($cartItems as $item) {
-                    if (!$item->product_id || !$item->product) {
-                        Log::warning("Item keranjang tidak valid", [
-                            'item_id'    => $item->id,
-                            'product_id' => $item->product_id,
-                        ]);
-                        continue;
-                    }
-
-                    $harga = $item->harga ?? $item->product->harga;
-                    $jumlah = $item->quantity ?? 1;
-
-                    OrderItem::create([
-                        'order_id'  => $order->id,
-                        'produk_id' => $item->product_id,
-                        'ukuran'    => $item->ukuran,
-                        'jumlah'    => $jumlah,
-                        'harga'     => $harga,
-                        'quantity'  => $jumlah,
-                        'price'     => $harga,
-                    ]);
-                }
-
-                KeranjangItem::whereHas('keranjang', fn($q) => $q->where('user_id', $order->user_id))->delete();
-            }
-
-            DB::commit();
-            return response()->json(['message' => 'Pesanan berhasil diproses (Simulasi)']);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Midtrans Callback Error (Simulasi): ' . $e->getMessage());
-            return response()->json(['error' => 'Terjadi kesalahan saat memproses pesanan'], 500);
-        }
+        return $this->callback($request);
     }
 
-    /**
-     * Bayar langsung (dummy)
-     */
-    public function bayarLangsung(Request $request)
+    public function bayarLangsung()
     {
         return back()->with('success', 'Pembayaran berhasil diproses (dummy).');
     }

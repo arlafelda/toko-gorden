@@ -45,6 +45,13 @@
         <span class="material-icons">analytics</span>
         <span class="text-sm font-medium">Trafik</span>
       </a>
+      <form action="{{ route('admin.logout') }}" method="POST">
+        @csrf
+        <button type="submit" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4] w-full text-left">
+          <span class="material-icons">logout</span>
+          <span class="text-sm font-medium">Logout</span>
+        </button>
+      </form>
     </nav>
   </aside>
 
@@ -82,12 +89,12 @@
           @forelse($orders as $order)
           @foreach($order->items as $item)
           <tr class="border-b">
-            <td class="px-4 py-2">{{ $order->order_date->format('d-m-Y') }}</td>
-            <td class="px-4 py-2">{{ $order->user->name ?? 'Guest' }}</td>
-            <td class="px-4 py-2">{{ $item->product->nama ?? 'Produk Dihapus' }}</td>
-            <td class="px-4 py-2">{{ $item->jumlah }}</td>
-            <td class="px-4 py-2">Rp {{ number_format($item->harga, 0, ',', '.') }}</td>
-            <td class="px-4 py-2">Rp {{ number_format($item->jumlah * $item->harga, 0, ',', '.') }}</td>
+            <td>{{ $order->order_date->format('d-m-Y') }}</td>
+            <td>{{ $order->user->name ?? 'Guest' }}</td>
+            <td>{{ $item->product->nama_produk ?? 'Produk Dihapus' }}</td>
+            <td>{{ $item->jumlah }}</td>
+            <td>Rp {{ number_format($item->harga,0,',','.') }}</td>
+            <td>Rp {{ number_format($item->jumlah * $item->harga,0,',','.') }}</td>
           </tr>
           @endforeach
           @empty
@@ -95,6 +102,7 @@
             <td colspan="6" class="text-center py-4 text-gray-500">Tidak ada data laporan untuk bulan ini.</td>
           </tr>
           @endforelse
+
         </tbody>
       </table>
     </div>

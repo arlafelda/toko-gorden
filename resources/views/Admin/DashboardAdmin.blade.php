@@ -43,12 +43,12 @@
         <span class="text-sm font-medium">Obrolan</span>
       </a>
       <form action="{{ route('admin.logout') }}" method="POST">
-    @csrf
-    <button type="submit" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4] w-full text-left">
-        <span class="material-icons">logout</span>
-        <span class="text-sm font-medium">Logout</span>
-    </button>
-</form>
+        @csrf
+        <button type="submit" class="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-[#f0f2f4] w-full text-left">
+          <span class="material-icons">logout</span>
+          <span class="text-sm font-medium">Logout</span>
+        </button>
+      </form>
 
     </nav>
   </aside>

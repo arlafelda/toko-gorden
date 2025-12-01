@@ -4,35 +4,28 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\OrderItem;
 use Illuminate\Http\Request;
 
 class AdminOrderController extends Controller
 {
-    /**
-     * Menampilkan daftar semua pesanan.
-     */
+    // Menampilkan semua pesanan
     public function index()
     {
-        // Ambil semua order dengan relasi user dan item
-        $orders = Order::with(['user', 'items'])->latest()->get();
+        $orders = Order::with(['items.product', 'user'])
+            ->orderBy('order_date', 'desc') // urut berdasarkan waktu pesanan
+            ->get();
 
         return view('Produk.PesananAdmin', compact('orders'));
     }
 
-    /**
-     * Menampilkan detail pesanan.
-     */
+    // Menampilkan detail pesanan
     public function show($id)
     {
-        $order = Order::with(['user', 'items.product'])->findOrFail($id);
-
+        $order = Order::with(['items.product', 'user'])->findOrFail($id);
         return view('Admin.DetailPemesanan', compact('order'));
     }
 
-    /**
-     * Memperbarui status pesanan.
-     */
+    // Mengubah status pesanan
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
@@ -46,23 +39,20 @@ class AdminOrderController extends Controller
         return redirect()->back()->with('success', 'Status pesanan berhasil diperbarui.');
     }
 
-    /**
-     * Menambahkan pesanan ke laporan penjualan (hanya untuk pesanan yang sudah selesai).
-     */
+    // Menambahkan pesanan ke laporan
     public function addToReport($id)
     {
         $order = Order::findOrFail($id);
 
-        // Pastikan status saat ini adalah "selesai"
         if ($order->status !== 'selesai') {
             return redirect()->back()->with('error', 'Hanya pesanan dengan status "selesai" yang dapat ditambahkan ke laporan.');
         }
 
-        // Pesanan sudah selesai, tidak perlu mengubah status lagi
-        // Pesanan akan muncul di laporan berdasarkan status "selesai"
+        $order->is_reported = true;
+        $order->save();
 
-        // Redirect ke halaman laporan dengan bulan pesanan tersebut
         $bulan = $order->order_date->format('Y-m');
-        return redirect()->route('admin.laporan', ['bulan' => $bulan])->with('success', 'Pesanan berhasil ditambahkan ke laporan penjualan.');
+        return redirect()->route('admin.laporan', ['bulan' => $bulan])
+            ->with('success', 'Pesanan berhasil ditambahkan ke laporan penjualan.');
     }
 }

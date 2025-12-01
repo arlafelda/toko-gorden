@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     use HasFactory;
-    // Jika nama tabel berbeda dari 'orders', gunakan: protected $table = 'nama_tabel';
 
     protected $fillable = [
         'order_id',
@@ -17,21 +16,22 @@ class Order extends Model
         'total',
         'status',
         'payment_type',
+        'is_reported',
     ];
 
     protected $casts = [
-        'order_date' => 'datetime',
-        'total' => 'integer',
+        'order_date' => 'datetime',   // supaya bisa pakai format() di Blade
+        'total' => 'decimal:2',       // sesuai tipe decimal di database
+        'is_reported' => 'boolean',   // untuk status laporan
     ];
 
-    /**
-     * Relasi ke User (yang melakukan pemesanan)
-     */
+    // Relasi ke OrderItem
     public function items()
     {
         return $this->hasMany(OrderItem::class);
     }
 
+    // Relasi ke User
     public function user()
     {
         return $this->belongsTo(User::class);
